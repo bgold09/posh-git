@@ -21,6 +21,7 @@ $subcommands = @{
         get-url set-url show prune update
         "
     rerere = "clear forget diff remaining status gc"
+    'sparse-checkout' = 'list set add reapply disable init check-rules'
     stash = 'push save list show apply clear drop pop create branch'
     submodule = "add status init deinit update summary foreach sync"
     svn = "
@@ -58,7 +59,7 @@ $script:someCommands = @('add','am','annotate','archive','bisect','blame','branc
                          'cherry-pick','citool','clean','clone','commit','config','describe','diff','difftool','fetch',
                          'format-patch','gc','grep','gui','help','init','instaweb','log','merge','mergetool','mv',
                          'notes','prune','pull','push','rebase','reflog','remote','rerere','reset','restore','revert','rm',
-                         'shortlog','show','stash','status','submodule','svn','switch','tag','whatchanged', 'worktree')
+                         'shortlog','show','sparse-checkout','stash','status','submodule','svn','switch','tag','whatchanged', 'worktree')
 
 if ((($PSVersionTable.PSVersion.Major -eq 5) -or $IsWindows) -and ($script:GitVersion -ge [System.Version]'2.16.2')) {
     $script:someCommands += 'update-git-for-windows'
@@ -301,6 +302,34 @@ function script:expandParamValues($cmd, $param, $filter) {
     $completions | ForEach-Object { -join ("--", $param, "=", $_) }
 }
 
+# Sparse-checkout subcommand parameter mappings
+$sparseCheckoutParams = @{
+    'set'         = @('cone', 'no-cone', 'sparse-index', 'no-sparse-index', 'stdin')
+    'add'         = @('cone', 'no-cone', 'sparse-index', 'no-sparse-index', 'stdin')
+    'reapply'     = @('cone', 'no-cone', 'sparse-index', 'no-sparse-index')
+    'init'        = @('cone', 'no-cone', 'sparse-index', 'no-sparse-index')
+    'check-rules' = @('rules-file=', 'no-cone', 'z')
+    'list'        = @()
+    'disable'     = @()
+}
+
+$sparseCheckoutShortParams = @{
+    'check-rules' = @('z')
+}
+
+function script:expandSparseCheckoutParams($subcommand, $filter, $isShort = $false) {
+    $params = if ($isShort) {
+        $sparseCheckoutShortParams[$subcommand]
+    } else {
+        $sparseCheckoutParams[$subcommand]
+    }
+
+    if ($params) {
+        $prefix = if ($isShort) { '-' } else { '--' }
+        $params | Where-Object { $_ -like "$filter*" } | ForEach-Object { "$prefix$_" }
+    }
+}
+
 function Expand-GitCommand($Command) {
     # Parse all Git output as UTF8, including tab completion output - https://github.com/dahlbyk/posh-git/pull/359
     $res = Invoke-Utf8ConsoleCommand { GitTabExpansionInternal $Command $Global:GitStatus }
@@ -366,6 +395,21 @@ function GitTabExpansionInternal($lastBlock, $GitStatus = $null) {
         # Handles git branch <branch name> <start-point>
         "^branch.* (?<branch>\S*)$" {
             gitBranches $matches['branch']
+        }
+
+        # Handles git sparse-checkout <subcommand> --<param>
+        "^sparse-checkout (?<subcommand>set|add|reapply|init|check-rules|list|disable).* --(?<param>\S*)$" {
+            expandSparseCheckoutParams $matches['subcommand'] $matches['param']
+        }
+
+        # Handles git sparse-checkout <subcommand> -<shortparam>
+        "^sparse-checkout (?<subcommand>check-rules).* -(?<shortparam>\S*)$" {
+            expandSparseCheckoutParams $matches['subcommand'] $matches['shortparam'] $true
+        }
+
+        # Handles git sparse-checkout check-rules --rules-file=<file>
+        "^sparse-checkout check-rules.* --rules-file=(?<file>\S*)$" {
+            Get-ChildItem -File | Where-Object { $_.Name -like "$($matches['file'])*" -and ($_.Extension -eq '' -or $_.Extension -eq '.txt' -or $_.Extension -eq '.rules') } | ForEach-Object { $_.Name }
         }
 
         # Handles git <cmd> (commands & aliases)

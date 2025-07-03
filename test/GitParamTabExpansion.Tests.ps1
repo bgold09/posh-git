@@ -150,5 +150,120 @@ Describe 'ParamsTabExpansion Tests' {
             $result -contains '--format=test2' | Should -Be $true
         }
     }
+
+    Context 'Sparse-Checkout TabExpansion Tests' {
+        It 'Tab completes sparse-checkout subcommands' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout '
+            $result -contains 'list' | Should -Be $true
+            $result -contains 'set' | Should -Be $true
+            $result -contains 'add' | Should -Be $true
+            $result -contains 'reapply' | Should -Be $true
+            $result -contains 'disable' | Should -Be $true
+            $result -contains 'init' | Should -Be $true
+            $result -contains 'check-rules' | Should -Be $true
+        }
+
+        It 'Tab completes sparse-checkout set long parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout set --'
+            $result -contains '--cone' | Should -Be $true
+            $result -contains '--no-cone' | Should -Be $true
+            $result -contains '--sparse-index' | Should -Be $true
+            $result -contains '--no-sparse-index' | Should -Be $true
+            $result -contains '--stdin' | Should -Be $true
+        }
+
+        It 'Tab completes sparse-checkout add long parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout add --'
+            $result -contains '--cone' | Should -Be $true
+            $result -contains '--no-cone' | Should -Be $true
+            $result -contains '--sparse-index' | Should -Be $true
+            $result -contains '--no-sparse-index' | Should -Be $true
+            $result -contains '--stdin' | Should -Be $true
+        }
+
+        It 'Tab completes sparse-checkout reapply long parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout reapply --'
+            $result -contains '--cone' | Should -Be $true
+            $result -contains '--no-cone' | Should -Be $true
+            $result -contains '--sparse-index' | Should -Be $true
+            $result -contains '--no-sparse-index' | Should -Be $true
+        }
+
+        It 'Tab completes sparse-checkout init long parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout init --'
+            $result -contains '--cone' | Should -Be $true
+            $result -contains '--no-cone' | Should -Be $true
+            $result -contains '--sparse-index' | Should -Be $true
+            $result -contains '--no-sparse-index' | Should -Be $true
+        }
+
+        It 'Tab completes sparse-checkout check-rules long parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout check-rules --'
+            $result -contains '--rules-file=' | Should -Be $true
+            $result -contains '--no-cone' | Should -Be $true
+            $result -contains '--z' | Should -Be $true
+        }
+
+        It 'Tab completes sparse-checkout check-rules short parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout check-rules -'
+            $result -contains '-z' | Should -Be $true
+        }
+
+        It 'Does not complete parameters for sparse-checkout list' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout list --'
+            $result.Count | Should -Be 0  # list doesn't accept any parameters
+        }
+
+        It 'Does not complete parameters for sparse-checkout disable' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout disable --'
+            $result.Count | Should -Be 0  # disable doesn't accept any parameters
+        }
+
+        It 'Tab completes partial sparse-checkout subcommands' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout se'
+            $result -contains 'set' | Should -Be $true
+        }
+
+        It 'Tab completes partial sparse-checkout set parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout set --co'
+            $result -contains '--cone' | Should -Be $true
+        }
+
+        It 'Tab completes partial sparse-checkout check-rules parameters' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout check-rules --ru'
+            $result -contains '--rules-file=' | Should -Be $true
+        }
+    }
+
+    Context 'Sparse-Checkout File Completion Tests' {
+        BeforeEach {
+            [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssigments', '')]
+            $repoPath = NewGitTempRepo
+
+            # Create some test files that could be rules files
+            'rule1' | Out-File -FilePath 'test.rules' -Encoding ascii
+            'rule2' | Out-File -FilePath 'patterns.txt' -Encoding ascii
+            'rule3' | Out-File -FilePath 'sparse-rules' -Encoding ascii
+            'other' | Out-File -FilePath 'README.md' -Encoding ascii
+        }
+        AfterEach {
+            RemoveGitTempRepo $repoPath
+        }
+
+        It 'Tab completes rules files for --rules-file parameter' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout check-rules --rules-file='
+            $result -contains 'test.rules' | Should -Be $true
+            $result -contains 'patterns.txt' | Should -Be $true
+            $result -contains 'sparse-rules' | Should -Be $true
+            $result -contains 'README.md' | Should -Be $false  # .md files should not be suggested
+        }
+
+        It 'Tab completes partial rules file names' {
+            $result = & $module GitTabExpansionInternal 'git sparse-checkout check-rules --rules-file=test'
+            $result -contains 'test.rules' | Should -Be $true
+            $result -contains 'patterns.txt' | Should -Be $false
+            $result -contains 'sparse-rules' | Should -Be $false
+        }
+    }
 }
 

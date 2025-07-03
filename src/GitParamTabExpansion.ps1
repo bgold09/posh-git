@@ -205,6 +205,13 @@ $gitParamValues = @{
         }
         encoding = 'utf-8'
     }
+    'sparse-checkout' = @{
+        'rules-file' = {
+            param($file)
+            # Return files that could be rules files (typically text files)
+            Get-ChildItem -File | Where-Object { $_.Name -like "$file*" -and ($_.Extension -eq '' -or $_.Extension -eq '.txt' -or $_.Extension -eq '.rules') } | ForEach-Object { $_.Name }
+        }
+    }
     status = @{
         'untracked-files' = 'no normal all'
         'ignore-submodules' = 'none untracked dirty all'
